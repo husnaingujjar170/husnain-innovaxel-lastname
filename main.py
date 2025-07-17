@@ -3,6 +3,7 @@ import os
 from pydantic import BaseModel, HttpUrl
 from datetime import datetime
 from bson import ObjectId
+from fastapi.responses import RedirectResponse, HTMLResponse
 import shortuuid
 app = FastAPI
 
@@ -47,5 +48,20 @@ async def create_short_url(url: UrlCreate):
     }
     result = await urls_collection.insert_one(url_data)
     return {**url_data, "_id": str(result.inserted_id)}
+
+@app.get("/{short_code}", response_class=RedirectResponse)
+async def redirect_to_original_url(short_code: str):
+    url_data = await urls_collection.find_one({"short_code": short_code})
+    if not url_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
+    
+    await urls_collection.update_one(
+        {"short_code": short_code},
+        {
+            "$inc": {"access_count": 1},
+            "$push": {"access_times": datetime.utcnow()}
+        }
+    )
+    return url_data["original_url"]
 
 
