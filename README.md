@@ -2,21 +2,6 @@
 
 This project is a simple URL shortener API that allows users to shorten URLs, retrieve original URLs, update URLs, delete URLs, and get statistics on the number of accesses. It also includes a basic HTML frontend built using Tailwind CSS to shorten URLs.
 
-## Table of Contents
-
-* [Overview](#overview)
-* [Requirements](#requirements)
-* [Installation](#installation)
-* [Usage](#usage)
-* [API Endpoints](#api-endpoints)
-
-  * [Create a Short URL](#create-a-short-url)
-  * [Redirect to Original URL](#redirect-to-original-url)
-  * [Update a Short URL](#update-a-short-url)
-  * [Delete a Short URL](#delete-a-short-url)
-  * [Get URL Statistics](#get-url-statistics)
-* [Frontend](#frontend)
-* [License](#license)
 
 ## Overview
 
