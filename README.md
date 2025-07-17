@@ -42,9 +42,8 @@ The API provides several features, including:
 ## Installation
 
 ### 1. Clone the repository
-
 ```bash
-git clone https://github.com/your-username/url-shortener.git
+git clone https://github.com/husnaingujjar170/husnain-innovaxelAssessment.git
 cd url-shortener
 ```
 
@@ -176,8 +175,3 @@ The frontend is a simple HTML page styled using Tailwind CSS. The page allows us
 * **Shorten URL**: After clicking the "Shorten URL" button, the frontend sends the input URL to the backend and displays the shortened URL along with additional information.
 * **Display Result**: After the API returns a response, the frontend displays the short URL, original URL, and access statistics.
 
----
-
-### **Note:**
-
-Make sure MongoDB is running locally, or you have a connection string configured to connect to a cloud MongoDB instance. If you have any issues, feel free to ask for help!
