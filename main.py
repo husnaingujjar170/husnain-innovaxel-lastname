@@ -1,10 +1,12 @@
-from fastapi import FastAPI
-import os
-from pydantic import BaseModel, HttpUrl
-from datetime import datetime
-from bson import ObjectId
+from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import RedirectResponse, HTMLResponse
+from pydantic import BaseModel, HttpUrl
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
 import shortuuid
+from datetime import datetime
+import os
+
 app = FastAPI
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
@@ -64,4 +66,27 @@ async def redirect_to_original_url(short_code: str):
     )
     return url_data["original_url"]
 
+@app.put("/api/urls/{short_code}", response_model=UrlResponse)
+async def update_short_url(short_code: str, url: UrlUpdate):
+    url_data = await urls_collection.find_one({"short_code": short_code})
+    if not url_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
+    
+    updated_data = {
+        "original_url": str(url.original_url),
+        "updated_at": datetime.utcnow()
+    }
+    await urls_collection.update_one(
+        {"short_code": short_code},
+        {"$set": updated_data}
+    )
+    updated_url = await urls_collection.find_one({"short_code": short_code})
+    return updated_url
+
+@app.delete("/api/urls/{short_code}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_short_url(short_code: str):
+    result = await urls_collection.delete_one({"short_code": short_code})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
+    return None
 
