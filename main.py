@@ -1,3 +1,4 @@
+
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel, HttpUrl
@@ -7,10 +8,12 @@ import shortuuid
 from datetime import datetime
 import os
 
-app = FastAPI
+app = FastAPI()
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
-
+client = AsyncIOMotorClient(MONGO_URI)
+db = client.url_shortener
+urls_collection = db.urls
 
 class UrlCreate(BaseModel):
     original_url: HttpUrl
@@ -36,8 +39,8 @@ async def generate_unique_short_code():
         short_code = shortuuid.uuid()[:8]
         existing = await urls_collection.find_one({"short_code": short_code})
         if not existing:
-            return 
-        
+            return short_code
+
 @app.post("/api/urls", response_model=UrlResponse, status_code=status.HTTP_201_CREATED)
 async def create_short_url(url: UrlCreate):
     short_code = await generate_unique_short_code()
@@ -96,3 +99,51 @@ async def get_url_stats(short_code: str):
     if not url_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
     return url_data
+
+@app.get("/", response_class=HTMLResponse)
+async def get_frontend():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>URL Shortener</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 flex items-center justify-center h-screen">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h1 class="text-2xl font-bold mb-4 text-center">URL Shortener</h1>
+            <div class="mb-4">
+                <input type="url" id="urlInput" class="w-full p-2 border rounded" placeholder="Enter URL to shorten">
+            </div>
+            <button onclick="shortenUrl()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Shorten URL</button>
+            <div id="result" class="mt-4"></div>
+        </div>
+        <script>
+            async function shortenUrl() {
+                const url = document.getElementById('urlInput').value;
+                try {
+                    const response = await fetch('/api/urls', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ original_url: url })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        const shortUrl = `${window.location.origin}/${data.short_code}`;
+                        document.getElementById('result').innerHTML = `
+                            <p>Short URL: <a href="${shortUrl}" class="text-blue-500">${shortUrl}</a></p>
+                            <p>Original URL: ${data.original_url}</p>
+                            <p>Access Count: ${data.access_count}</p>
+                            <p>Access Times: ${data.access_times.join(', ')}</p>
+                        `;
+                    } else {
+                        document.getElementById('result').innerHTML = `<p class="text-red-500">${data.detail}</p>`;
+                    }
+                } catch (error) {
+                    document.getElementById('result').innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
