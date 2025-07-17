@@ -51,15 +51,22 @@ async def create_short_url(url: UrlCreate):
         "access_count": 0,
         "access_times": []
     }
-    result = await urls_collection.insert_one(url_data)
-    return {**url_data, "_id": str(result.inserted_id)}
+    await urls_collection.insert_one(url_data)
+    # Fetch the inserted document to ensure all fields are present
+    created_url = await urls_collection.find_one({"short_code": short_code})
+    return {
+        "short_code": created_url["short_code"],
+        "original_url": created_url["original_url"],
+        "created_at": created_url["created_at"],
+        "access_count": created_url["access_count"],
+        "access_times": created_url["access_times"]
+    }
 
 @app.get("/{short_code}", response_class=RedirectResponse)
 async def redirect_to_original_url(short_code: str):
     url_data = await urls_collection.find_one({"short_code": short_code})
     if not url_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
-    
     await urls_collection.update_one(
         {"short_code": short_code},
         {
@@ -67,24 +74,28 @@ async def redirect_to_original_url(short_code: str):
             "$push": {"access_times": datetime.utcnow()}
         }
     )
-    return url_data["original_url"]
+    return RedirectResponse(url=url_data["original_url"])
 
 @app.put("/api/urls/{short_code}", response_model=UrlResponse)
 async def update_short_url(short_code: str, url: UrlUpdate):
     url_data = await urls_collection.find_one({"short_code": short_code})
     if not url_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
-    
     updated_data = {
-        "original_url": str(url.original_url),
-        "updated_at": datetime.utcnow()
+        "original_url": str(url.original_url)
     }
     await urls_collection.update_one(
         {"short_code": short_code},
         {"$set": updated_data}
     )
     updated_url = await urls_collection.find_one({"short_code": short_code})
-    return updated_url
+    return {
+        "short_code": updated_url["short_code"],
+        "original_url": updated_url["original_url"],
+        "created_at": updated_url["created_at"],
+        "access_count": updated_url["access_count"],
+        "access_times": updated_url["access_times"]
+    }
 
 @app.delete("/api/urls/{short_code}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_short_url(short_code: str):
@@ -98,7 +109,13 @@ async def get_url_stats(short_code: str):
     url_data = await urls_collection.find_one({"short_code": short_code})
     if not url_data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
-    return url_data
+    return {
+        "short_code": url_data["short_code"],
+        "original_url": url_data["original_url"],
+        "created_at": url_data["created_at"],
+        "access_count": url_data["access_count"],
+        "access_times": url_data["access_times"]
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def get_frontend():
