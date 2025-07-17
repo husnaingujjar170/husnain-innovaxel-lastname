@@ -90,3 +90,9 @@ async def delete_short_url(short_code: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
     return None
 
+@app.get("/api/urls/{short_code}/stats", response_model=UrlResponse)
+async def get_url_stats(short_code: str):
+    url_data = await urls_collection.find_one({"short_code": short_code})
+    if not url_data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Short URL not found")
+    return url_data
